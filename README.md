@@ -2,7 +2,8 @@
 
 A free, publicly linkable pre-market finance bulletin for the NU Oakland
 Investing Club: market pulse, macro calendar, a tech desk, the small-cap
-watchlist, daily quiz + interview prep — rebuilt automatically every trading
+watchlist, a **Filings Watch** of recent SEC EDGAR filings from the watchlist
+companies, daily quiz + interview prep — rebuilt automatically every trading
 day before the opening bell. No login for readers.
 
 ## How it works now (Claude scheduled cloud agent)
@@ -19,8 +20,8 @@ day before the opening bell. No login for readers.
   2. researches the day from the club reading list (Morning Brew, Brew
      Markets, Financial Times, Axios Markets, Wall Street Oasis — The Daily
      Peel, CFO Brew, Money Stuff, Stratechery/Sharp Tech, The Diff,
-     TechCrunch, plus Yahoo Finance / CNBC / CNN Markets and an economic
-     calendar),
+     TechCrunch, plus Yahoo Finance / CNBC / CNN Markets, an economic
+     calendar, and **SEC EDGAR** for recent watchlist-company filings),
   3. rewrites only the JSON data block,
   4. republishes the **same** Artifact URL in place.
 
