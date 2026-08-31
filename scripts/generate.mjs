@@ -23,8 +23,19 @@ async function note(line) {
 
 const API_KEY = process.env.GEMINI_API_KEY;
 
-const MODEL = "gemini-3.6-flash"; // free-tier flash model; see aistudio.google.com/ for current names
-const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+// Tried in order; the first that isn't 404 (retired) or 429 (no free quota) wins.
+// Override with env GEMINI_MODEL to force one.
+const MODELS = process.env.GEMINI_MODEL
+  ? [process.env.GEMINI_MODEL]
+  : [
+      "gemini-2.5-flash-lite",
+      "gemini-flash-latest",
+      "gemini-flash-lite-latest",
+      "gemini-2.0-flash",
+      "gemini-2.5-flash",
+    ];
+const endpointFor = (m) =>
+  `https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent`;
 const INDEX_FILE = new URL("../index.html", import.meta.url);
 const DATA_RE =
   /(<script id="bulletin-data" type="application\/json">\n)([\s\S]*?)(\n<\/script>)/;
@@ -102,19 +113,16 @@ Do not fabricate numbers or filings. If you cannot verify something, describe it
 // --- Gemini call (REST; Google Search grounding) --------------------------
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-async function callGemini() {
+async function tryModel(model) {
   const body = JSON.stringify({
     contents: [{ role: "user", parts: [{ text: prompt }] }],
     tools: [{ google_search: {} }],
-    generationConfig: {
-      temperature: 0.6,
-      maxOutputTokens: 32000, // headroom for the model's own reasoning + the JSON
-    },
+    generationConfig: { temperature: 0.6, maxOutputTokens: 32000 },
   });
 
-  let lastErr;
-  for (let attempt = 1; attempt <= 3; attempt++) {
-    const res = await fetch(ENDPOINT, {
+  // Two attempts per model, to ride out a brief per-minute throttle.
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const res = await fetch(endpointFor(model), {
       method: "POST",
       headers: { "content-type": "application/json", "x-goog-api-key": API_KEY.trim() },
       body,
@@ -130,14 +138,36 @@ async function callGemini() {
       return (cand.content?.parts || []).map((p) => p.text || "").join("").trim();
     }
 
-    const errText = (await res.text().catch(() => "")).slice(0, 1200);
-    lastErr = new Error(`Gemini API ${res.status}: ${errText}`);
-    // Retry transient errors only; fail fast on 400/401/403/404.
-    if (![429, 500, 502, 503, 504].includes(res.status)) throw lastErr;
-    console.warn(`attempt ${attempt} got ${res.status}, retrying in ${attempt * 8}s...`);
-    await sleep(attempt * 8000);
+    const errText = (await res.text().catch(() => "")).slice(0, 800);
+    const err = new Error(`${res.status}: ${errText}`);
+    err.status = res.status;
+    if (res.status === 404) throw err; // retired model - move to next
+    if (res.status === 429 && attempt === 2) throw err; // no free quota - move to next
+    if (![429, 500, 502, 503, 504].includes(res.status)) throw err; // 400/401/403 - real problem
+    await sleep(20000);
   }
-  throw lastErr;
+}
+
+async function callGemini() {
+  let lastErr;
+  for (const model of MODELS) {
+    try {
+      await note(`Trying model: ${model} ...`);
+      const text = await tryModel(model);
+      await note(`  -> ${model} worked.`);
+      return text;
+    } catch (e) {
+      lastErr = e;
+      await note(`  -> ${model} failed (${e.status || "?"}): ${String(e.message).slice(0, 200)}`);
+      if (e.status && ![404, 429].includes(e.status)) throw e; // stop on a genuine error
+    }
+  }
+  throw new Error(
+    "Every candidate model returned 404 (retired) or 429 (no free quota). " +
+      "Last error: " + (lastErr?.message || lastErr) +
+      "  --  Free-tier grounded requests may now require billing on this Google key; " +
+      "consider enabling billing (a few cents/month) or switching the generator."
+  );
 }
 
 // --- validation --------------------------------------------------------------
