@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Soreno Bulletin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    /* light — cool newsprint, not cream */
+    --ground:#F4F5F6;
+    --surface:#FBFBFC;
+    --panel:#EEF0F2;
+    --ink:#14171D;
+    --ink-dim:#5A616E;
+    --ink-faint:#878E9B;
+    --rule:rgba(20,23,29,0.14);
+    --rule-strong:rgba(20,23,29,0.42);
+    --amber:#B0740B;
+    --amber-ink:#7A4F04;
+    --up:#1C7F53;
+    --down:#C1392B;
+    --glow:rgba(176,116,11,0.10);
+  }
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#0E1116;
+      --surface:#151A22;
+      --panel:#1B212B;
+      --ink:#E9E7E1;
+      --ink-dim:#9AA2AF;
+      --ink-faint:#6C7480;
+      --rule:rgba(233,231,225,0.14);
+      --rule-strong:rgba(233,231,225,0.40);
+      --amber:#F0B12E;
+      --amber-ink:#F5C866;
+      --up:#43B57F;
+      --down:#E5604A;
+      --glow:rgba(240,177,46,0.12);
+    }
+  }
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --ground:#0E1116;
+    --surface:#151A22;
+    --panel:#1B212B;
+    --ink:#E9E7E1;
+    --ink-dim:#9AA2AF;
+    --ink-faint:#6C7480;
+    --rule:rgba(233,231,225,0.14);
+    --rule-strong:rgba(233,231,225,0.40);
+    --amber:#F0B12E;
+    --amber-ink:#F5C866;
+    --up:#43B57F;
+    --down:#E5604A;
+    --glow:rgba(240,177,46,0.12);
+  }
+
+  *{box-sizing:border-box;}
+  html{-webkit-text-size-adjust:100%;}
+  body{
+    margin:0;
+    background:var(--ground);
+    color:var(--ink);
+    font-family:"Newsreader", Georgia, "Times New Roman", serif;
+    font-size:18px;
+    line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+  .wrap{max-width:940px; margin:0 auto; padding:0 22px;}
+  .mono{font-family:"JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;}
+
+  /* ---------- masthead ---------- */
+  .masthead{
+    position:relative;
+    text-align:center;
+    padding:40px 22px 20px;
+    border-bottom:3px double var(--rule-strong);
+    overflow:hidden;
+  }
+  .masthead::before{
+    content:"";
+    position:absolute; inset:0;
+    background:
+      radial-gradient(120% 80% at 50% -10%, var(--glow), transparent 70%),
+      repeating-linear-gradient(0deg, transparent 0 2px, rgba(127,127,127,0.035) 2px 3px);
+    pointer-events:none;
+  }
+  .masthead > *{position:relative;}
+  .eyebrow{
+    font-family:"JetBrains Mono", monospace;
+    font-size:10.5px; letter-spacing:0.26em; text-transform:uppercase;
+    color:var(--ink-dim);
+  }
+  .nameplate{
+    font-family:"Archivo", system-ui, sans-serif;
+    font-weight:800;
+    font-size:clamp(52px, 12vw, 104px);
+    letter-spacing:0.02em;
+    line-height:0.92;
+    margin:10px 0 0;
+    text-transform:uppercase;
+  }
+  .nameplate .dot{color:var(--amber);}
+  .tagline{
+    font-style:italic; font-size:15.5px; color:var(--ink-dim);
+    margin-top:8px; text-wrap:balance;
+  }
+  .dateline{
+    margin-top:16px;
+    display:flex; justify-content:center; gap:14px; flex-wrap:wrap;
+    font-family:"JetBrains Mono", monospace;
+    font-size:11px; letter-spacing:0.08em; text-transform:uppercase;
+    color:var(--ink);
+  }
+  .dateline .sep{color:var(--ink-faint);}
+  .dateline .edition{color:var(--amber-ink);}
+
+  /* ---------- ticker ---------- */
+  .ticker-rail{
+    background:var(--ink);
+    color:var(--ground);
+    border-top:1px solid var(--amber);
+    border-bottom:1px solid var(--amber);
+    overflow:hidden; white-space:nowrap;
+  }
+  .ticker{
+    display:inline-block; padding:8px 0 8px 100%;
+    font-family:"JetBrains Mono", monospace; font-size:12.5px; letter-spacing:0.02em;
+    animation:ticker 46s linear infinite;
+  }
+  .ticker .cell{margin-right:42px;}
+  .ticker .lbl{color:var(--ground); opacity:0.62; margin-right:8px;}
+  .ticker .val{font-weight:700;}
+  .ticker .chg.up{color:#7FE0AE;}
+  .ticker .chg.down{color:#F6A08C;}
+  @keyframes ticker{from{transform:translateX(0);} to{transform:translateX(-100%);}}
+  @media (prefers-reduced-motion: reduce){
+    .ticker{animation:none; padding-left:22px;}
+  }
+
+  /* ---------- sections ---------- */
+  main{padding-bottom:40px;}
+  .reveal{opacity:0; transform:translateY(10px); animation:rise .5s ease forwards;}
+  @media (prefers-reduced-motion: reduce){ .reveal{opacity:1; transform:none; animation:none;} }
+  @keyframes rise{to{opacity:1; transform:none;}}
+
+  section{padding-top:44px;}
+  .sec-head{
+    display:flex; align-items:baseline; justify-content:space-between; gap:14px;
+    border-bottom:2px solid var(--rule-strong);
+    padding-bottom:7px; margin-bottom:22px;
+    flex-wrap:wrap;
+  }
+  .sec-head h2{
+    font-family:"Archivo", system-ui, sans-serif;
+    font-weight:800; text-transform:uppercase; letter-spacing:0.03em;
+    font-size:clamp(21px, 3.6vw, 28px); margin:0; line-height:1;
+  }
+  .sec-head .kick{
+    font-family:"JetBrains Mono", monospace;
+    font-size:10.5px; letter-spacing:0.14em; text-transform:uppercase;
+    color:var(--ink-dim); white-space:nowrap;
+  }
+
+  /* intro / about */
+  .lede{
+    font-size:19.5px; line-height:1.62; margin:0 0 6px;
+    text-wrap:pretty;
+  }
+  .lede .drop{
+    float:left; font-family:"Archivo", sans-serif; font-weight:800;
+    font-size:62px; line-height:0.78; padding:6px 10px 0 0; color:var(--amber);
+  }
+  .meta-strip{
+    display:grid; grid-template-columns:repeat(4, 1fr); gap:1px;
+    background:var(--rule); border:1px solid var(--rule);
+    margin-top:20px; font-family:"JetBrains Mono", monospace;
+  }
+  .meta-strip div{background:var(--surface); padding:11px 12px;}
+  .meta-strip dt{font-size:9.5px; letter-spacing:0.14em; text-transform:uppercase; color:var(--ink-faint);}
+  .meta-strip dd{margin:3px 0 0; font-size:12px; color:var(--ink);}
+  @media (max-width:640px){ .meta-strip{grid-template-columns:repeat(2,1fr);} }
+
+  /* pulse + tech list */
+  .feed{display:flex; flex-direction:column;}
+  .feed .item{
+    display:grid; grid-template-columns:132px 1fr; gap:20px;
+    padding:16px 0; border-bottom:1px solid var(--rule);
+  }
+  .feed .item:first-child{padding-top:0;}
+  .feed .tag{
+    font-family:"JetBrains Mono", monospace; font-size:10px;
+    letter-spacing:0.1em; text-transform:uppercase; color:var(--amber-ink);
+    padding-top:5px;
+  }
+  .feed h3{
+    font-family:"Archivo", sans-serif; font-weight:700;
+    font-size:18.5px; margin:0 0 5px; line-height:1.28; text-wrap:balance;
+  }
+  .feed p{margin:0; color:var(--ink-dim); font-size:15.5px; line-height:1.55;}
+  @media (max-width:640px){
+    .feed .item{grid-template-columns:1fr; gap:5px;}
+    .feed .tag{padding-top:0;}
+  }
+
+  /* macro */
+  .macro-top{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:20px;
+  }
+  .macro-top .box{
+    background:var(--surface); border:1px solid var(--rule);
+    border-left:3px solid var(--amber); padding:13px 15px;
+  }
+  .macro-top .box .k{
+    font-family:"JetBrains Mono", monospace; font-size:9.5px;
+    letter-spacing:0.13em; text-transform:uppercase; color:var(--ink-faint);
+  }
+  .macro-top .box .v{
+    font-family:"Archivo", sans-serif; font-weight:700; font-size:19px;
+    margin-top:5px; line-height:1.15;
+  }
+  .macro-top .box .s{font-size:13px; color:var(--ink-dim); margin-top:3px;}
+  @media (max-width:640px){ .macro-top{grid-template-columns:1fr;} }
+
+  .cal{width:100%; border-collapse:collapse; font-size:14.5px;}
+  .cal th{
+    text-align:left; font-family:"JetBrains Mono", monospace;
+    font-size:9.5px; letter-spacing:0.13em; text-transform:uppercase;
+    color:var(--ink-faint); padding:0 12px 7px 0; border-bottom:1px solid var(--rule);
+  }
+  .cal td{padding:9px 12px 9px 0; border-bottom:1px solid var(--rule); vertical-align:top;}
+  .cal td:first-child{
+    font-family:"JetBrains Mono", monospace; font-size:12px; color:var(--amber-ink);
+    white-space:nowrap; letter-spacing:0.03em;
+  }
+  .cal td.ev{font-family:"Archivo", sans-serif; font-weight:600; white-space:nowrap;}
+  .cal td.nt{color:var(--ink-dim); font-size:13.5px;}
+  .watching{
+    margin-top:16px; padding:12px 15px; background:var(--panel);
+    border:1px solid var(--rule); font-size:14.5px; color:var(--ink-dim);
+  }
+  .watching b{
+    color:var(--ink); font-family:"JetBrains Mono", monospace;
+    font-size:10px; letter-spacing:0.13em; text-transform:uppercase;
+    display:block; margin-bottom:4px;
+  }
+  @media (max-width:600px){
+    .cal thead{display:none;}
+    .cal, .cal tbody, .cal tr, .cal td{display:block; width:100%;}
+    .cal tr{padding:8px 0; border-bottom:1px solid var(--rule);}
+    .cal td{border:0; padding:2px 0;}
+    .cal td.ev{margin-top:2px;}
+  }
+
+  /* radar table */
+  .radar-note{font-size:14px; color:var(--ink-dim); margin:0 0 14px;}
+  .radar-scroll{overflow-x:auto; border:1px solid var(--rule);}
+  table.radar{width:100%; border-collapse:collapse; font-size:14px; min-width:560px;}
+  table.radar th{
+    text-align:left; background:var(--panel);
+    font-family:"JetBrains Mono", monospace; font-size:9.5px;
+    letter-spacing:0.12em; text-transform:uppercase; color:var(--ink-dim);
+    padding:9px 14px; border-bottom:1px solid var(--rule);
+  }
+  table.radar td{padding:10px 14px; border-bottom:1px solid var(--rule); vertical-align:top;}
+  table.radar tr:last-child td{border-bottom:0;}
+  table.radar .tk{font-family:"JetBrains Mono", monospace; font-weight:700; letter-spacing:0.03em;}
+  table.radar .co{color:var(--ink-dim); font-size:12.5px; display:block; margin-top:1px;}
+  table.radar .mc{font-family:"JetBrains Mono", monospace; font-variant-numeric:tabular-nums; color:var(--ink-dim); white-space:nowrap;}
+  table.radar .th{color:var(--ink-dim); font-size:13.5px;}
+  .flag{
+    display:inline-block; font-family:"JetBrains Mono", monospace;
+    font-size:9.5px; letter-spacing:0.08em; text-transform:uppercase;
+    padding:2px 7px; border:1px solid var(--rule-strong); color:var(--ink);
+    white-space:nowrap;
+  }
+  .flag.hot{border-color:var(--amber); color:var(--amber-ink);}
+  .flag.quiet{color:var(--ink-faint); border-color:var(--rule);}
+
+  /* filings watch */
+  .filing{
+    display:grid; grid-template-columns:118px 1fr auto; gap:14px;
+    padding:11px 0; border-bottom:1px solid var(--rule); font-size:14.5px;
+  }
+  .filing:first-child{padding-top:0;}
+  .filing .fk{font-family:"JetBrains Mono", monospace; line-height:1.3;}
+  .filing .fk b{font-weight:700;}
+  .filing .fk span{
+    display:block; font-size:10px; letter-spacing:0.08em; text-transform:uppercase;
+    color:var(--amber-ink); margin-top:2px;
+  }
+  .filing .fw{color:var(--ink-dim); line-height:1.5;}
+  .filing .fd{
+    font-family:"JetBrains Mono", monospace; font-size:12px;
+    color:var(--ink-faint); white-space:nowrap; padding-top:2px;
+  }
+  @media (max-width:600px){
+    .filing{grid-template-columns:1fr auto; gap:6px 14px;}
+    .filing .fk{grid-column:1 / -1;}
+  }
+
+  /* trading floor Q&A */
+  details.qa{border-bottom:1px solid var(--rule); padding:15px 0;}
+  details.qa:first-of-type{padding-top:0;}
+  details.qa summary{
+    cursor:pointer; list-style:none; display:flex; gap:14px; align-items:flex-start;
+  }
+  details.qa summary::-webkit-details-marker{display:none;}
+  details.qa .qn{
+    font-family:"JetBrains Mono", monospace; color:var(--up); font-size:12.5px;
+    padding-top:4px; min-width:26px;
+  }
+  details.qa .qt{font-family:"Archivo", sans-serif; font-weight:600; font-size:16.5px; line-height:1.35; flex:1;}
+  details.qa .pm{
+    font-family:"JetBrains Mono", monospace; color:var(--ink-faint);
+    font-size:15px; padding-top:2px;
+  }
+  details.qa[open] .pm{color:var(--amber);}
+  details.qa .ans{
+    margin:11px 0 2px 40px; padding-left:15px; border-left:2px solid var(--amber);
+    color:var(--ink-dim); font-size:15.5px; line-height:1.6;
+  }
+  @media (max-width:600px){ details.qa .ans{margin-left:0;} }
+
+  /* the desk */
+  .desk .item{padding:16px 0; border-bottom:1px solid var(--rule);}
+  .desk .item:first-child{padding-top:0;}
+  .desk .co{
+    font-family:"JetBrains Mono", monospace; font-size:10px;
+    letter-spacing:0.12em; text-transform:uppercase; color:var(--amber-ink); margin-bottom:5px;
+  }
+  .desk h3{font-family:"Archivo", sans-serif; font-weight:600; font-size:16.5px; margin:0 0 7px; line-height:1.38;}
+  .desk .tip{font-size:14px; color:var(--ink-dim);}
+  .desk .tip::before{content:"Tip — "; font-family:"JetBrains Mono", monospace; font-size:10px; letter-spacing:0.1em; text-transform:uppercase; color:var(--up);}
+
+  /* term of the day */
+  .term-card{
+    background:var(--surface); border:1px solid var(--rule);
+    border-top:3px solid var(--amber); padding:20px 22px;
+  }
+  .term-card .t{font-family:"Archivo", sans-serif; font-weight:800; font-size:22px; text-transform:uppercase; letter-spacing:0.02em;}
+  .term-card .d{margin:9px 0 0; color:var(--ink-dim); font-size:16px; line-height:1.6;}
+  .term-card .also{
+    margin-top:12px; font-family:"JetBrains Mono", monospace; font-size:11px;
+    letter-spacing:0.06em; color:var(--ink-faint);
+  }
+
+  /* discussion prep */
+  .prep{counter-reset:prep; display:flex; flex-direction:column; gap:0;}
+  .prep .item{
+    display:grid; grid-template-columns:44px 1fr; gap:16px;
+    padding:15px 0; border-bottom:1px solid var(--rule);
+  }
+  .prep .item:first-child{padding-top:0;}
+  .prep .item::before{
+    counter-increment:prep; content:counter(prep, decimal-leading-zero);
+    font-family:"Archivo", sans-serif; font-weight:800; font-size:20px; color:var(--amber);
+  }
+  .prep h3{font-family:"Archivo", sans-serif; font-weight:700; font-size:17px; margin:0 0 5px; line-height:1.3;}
+  .prep p{margin:0; color:var(--ink-dim); font-size:15px;}
+  .prep p::before{content:"Bring to the table — "; font-family:"JetBrains Mono", monospace; font-size:9.5px; letter-spacing:0.1em; text-transform:uppercase; color:var(--ink-faint);}
+
+  /* sources */
+  .src-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px 26px;}
+  .src-grid ul{list-style:none; margin:0; padding:0;}
+  .src-grid li{
+    font-family:"JetBrains Mono", monospace; font-size:12.5px; line-height:1.9;
+    color:var(--ink-dim); border-bottom:1px dotted var(--rule); padding:3px 0;
+  }
+  .src-grid li b{color:var(--ink); font-weight:500;}
+  .src-grid h4{
+    font-family:"JetBrains Mono", monospace; font-size:10px; letter-spacing:0.14em;
+    text-transform:uppercase; color:var(--amber-ink); margin:0 0 6px;
+  }
+  .src-foot{margin-top:16px; font-size:13.5px; color:var(--ink-faint); font-style:italic;}
+  @media (max-width:600px){ .src-grid{grid-template-columns:1fr;} }
+
+  /* footer */
+  footer{
+    border-top:3px double var(--rule-strong);
+    margin-top:48px; padding:22px 22px 60px;
+  }
+  footer .wrap{
+    display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    font-family:"JetBrains Mono", monospace; font-size:10.5px;
+    letter-spacing:0.05em; color:var(--ink-faint); text-transform:uppercase;
+  }
+
+  .empty{font-family:"JetBrains Mono", monospace; font-size:13px; color:var(--ink-faint); padding:8px 0;}
+
+  a{color:var(--amber-ink);}
+  :focus-visible{outline:2px solid var(--amber); outline-offset:3px;}
+</style>
+</head>
+<body>
+<header class="masthead">
+  <div class="eyebrow">NU Oakland Investing Club &nbsp;&middot;&nbsp; Pre-Market Bulletin</div>
+  <h1 class="nameplate">Soren<span class="dot">o</span></h1>
+  <p class="tagline">What moved overnight, what to watch today, and what they'll ask you on the desk.</p>
+  <div class="dateline">
+    <span id="dl-date">—</span>
+    <span class="sep">//</span>
+    <span id="dl-edition" class="edition">edition</span>
+    <span class="sep">//</span>
+    <span id="dl-compiled">compiled —</span>
+  </div>
+</header>
+
+<div class="ticker-rail" aria-label="Market snapshot">
+  <div class="ticker mono" id="ticker">loading snapshot…</div>
+</div>
+
+<main class="wrap">
+
+  <section id="brief" class="reveal">
+    <div class="sec-head"><h2>The Brief</h2><span class="kick">Why this page exists</span></div>
+    <p class="lede"><span class="drop">S</span>oreno is the club's shared starting point. Everyone opens the same page on the same morning, so the weekly meeting begins with a common picture of what happened instead of a cold start. It rebuilds itself before the opening bell on every trading day &mdash; researched live from the reading list, never from memory &mdash; and anyone with the link can read it, no login.</p>
+    <dl class="meta-strip">
+      <div><dt>Refresh</dt><dd id="m-refresh">Trading days, pre-market</dd></div>
+      <div><dt>Sourced</dt><dd>Live web search</dd></div>
+      <div><dt>Audience</dt><dd>Anyone with the link</dd></div>
+      <div><dt>Covers</dt><dd>Macro · Tech · Small-cap</dd></div>
+    </dl>
+  </section>
+
+  <section id="pulse" class="reveal">
+    <div class="sec-head"><h2>Market Pulse</h2><span class="kick">Overnight &amp; pre-market</span></div>
+    <div class="feed" id="pulse-feed"></div>
+  </section>
+
+  <section id="macro" class="reveal">
+    <div class="sec-head"><h2>Macro Watch</h2><span class="kick">Rates · data · the calendar</span></div>
+    <div class="macro-top" id="macro-top"></div>
+    <table class="cal">
+      <thead><tr><th>When</th><th>Release</th><th>Why it matters</th></tr></thead>
+      <tbody id="cal-body"></tbody>
+    </table>
+    <div class="watching" id="macro-watching"></div>
+  </section>
+
+  <section id="tech" class="reveal">
+    <div class="sec-head"><h2>Tech Desk</h2><span class="kick">This semester's industry</span></div>
+    <div class="feed" id="tech-feed"></div>
+  </section>
+
+  <section id="radar" class="reveal">
+    <div class="sec-head"><h2>Small-Cap Radar</h2><span class="kick">The standing watchlist</span></div>
+    <p class="radar-note" id="radar-note"></p>
+    <div class="radar-scroll">
+      <table class="radar">
+        <thead><tr><th>Ticker</th><th>Mkt cap</th><th>What they do &amp; why we watch</th><th>Status</th></tr></thead>
+        <tbody id="radar-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="filings" class="reveal">
+    <div class="sec-head"><h2>Filings Watch</h2><span class="kick">Fresh on SEC EDGAR</span></div>
+    <p class="radar-note" id="filings-note"></p>
+    <div id="filings-list"></div>
+  </section>
+
+  <section id="floor" class="reveal">
+    <div class="sec-head"><h2>Trading Floor</h2><span class="kick">Test yourself · tap to open</span></div>
+    <div id="floor-list"></div>
+  </section>
+
+  <section id="desk" class="reveal">
+    <div class="sec-head"><h2>The Desk</h2><span class="kick">Interview prep from the Street</span></div>
+    <div class="desk" id="desk-list"></div>
+  </section>
+
+  <section id="term" class="reveal">
+    <div class="sec-head"><h2>Term of the Day</h2><span class="kick">From the handbook glossary</span></div>
+    <div class="term-card" id="term-card"></div>
+  </section>
+
+  <section id="discussion" class="reveal">
+    <div class="sec-head"><h2>Discussion Prep</h2><span class="kick">For the weekly news round</span></div>
+    <div class="prep" id="prep-list"></div>
+  </section>
+
+  <section id="sources" class="reveal">
+    <div class="sec-head"><h2>Sources</h2><span class="kick">The club reading list</span></div>
+    <div class="src-grid">
+      <div>
+        <h4>Daily &amp; weekly reading</h4>
+        <ul>
+          <li><b>Morning Brew</b> — daily business news</li>
+          <li><b>Brew Markets</b> — daily markets companion</li>
+          <li><b>Financial Times</b> — global markets &amp; macro</li>
+          <li><b>Axios Markets</b> — fast market wrap</li>
+          <li><b>WSO — The Daily Peel</b> — Wall Street Oasis markets recap</li>
+          <li><b>CFO Brew</b> — corporate finance</li>
+          <li><b>Money Stuff</b> — Matt Levine, Bloomberg</li>
+          <li><b>Stratechery / Sharp Tech</b> — Ben Thompson</li>
+          <li><b>The Diff</b> — Byrne Hobart</li>
+          <li><b>TechCrunch</b> — tech-industry news</li>
+        </ul>
+      </div>
+      <div>
+        <h4>Data &amp; primary source</h4>
+        <ul>
+          <li><b>Yahoo Finance</b> — quotes, statements, screener</li>
+          <li><b>stockanalysis.com</b> — small-cap screen ($300M&ndash;$2B)</li>
+          <li><b>Finviz</b> — visual screener</li>
+          <li><b>SEC EDGAR</b> (sec.gov) — the SEC's free database of company filings: annual 10-K (or 20-F for foreign issuers), quarterly 10-Q, material-event 8-K, proxies. See "Filings Watch" above</li>
+          <li><b>Investor relations</b> — transcripts &amp; decks</li>
+        </ul>
+        <h4 style="margin-top:14px;">Framework</h4>
+        <ul>
+          <li><b>CFI</b> — statements &amp; valuation refreshers</li>
+          <li><b>Barney RBV / VRIO</b> — the resource lens</li>
+          <li><b>Damodaran (NYU Stern)</b> — valuation, deeper</li>
+        </ul>
+      </div>
+    </div>
+    <p class="src-foot" id="src-foot"></p>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span id="ft-note">Rebuilds automatically every trading day before the open.</span>
+    <span id="ft-gen">—</span>
+  </div>
+</footer>
+
+<script id="bulletin-data" type="application/json">
+{
+  "date": "2026-08-30",
+  "prettyDate": "Sunday, August 30, 2026",
+  "edition": "Weekend edition",
+  "compiled": "Sun Aug 30, 2026 - 16:45 ET",
+  "refresh": "Trading days, pre-market",
+  "marketsClosed": true,
+  "ticker": [
+    {"label": "S&P 500", "value": "7,711.76", "change": "+0.5% wk", "dir": "up"},
+    {"label": "NASDAQ", "value": "26,402.42", "change": "+0.8% wk", "dir": "up"},
+    {"label": "DOW", "value": "53,559.99", "change": "+0.5% wk", "dir": "up"},
+    {"label": "UST 10Y", "value": "4.73%", "change": "post-Jackson Hole", "dir": "up"},
+    {"label": "VIX", "value": "14.4", "change": "near 2026 low", "dir": "down"},
+    {"label": "Fed funds", "value": "3.50-3.75%", "change": "hawkish tilt", "dir": "flat"},
+    {"label": "NVDA", "value": "+9%", "change": "Q2 beat, Aug 27", "dir": "up"},
+    {"label": "Bitcoin", "value": "~$78,100", "change": "+20% since Aug 19", "dir": "up"},
+    {"label": "Next FOMC", "value": "Sep 16", "change": "hike odds ~58%", "dir": "flat"}
+  ],
+  "pulse": [
+    {"kicker": "The Fed", "headline": "Warsh's first Jackson Hole speech turns hawkish", "blurb": "New Fed Chair Kevin Warsh used his first Jackson Hole address to call inflation 'still too high' and financial conditions 'a little frothy,' pushing back on rate-cut hopes. September hike odds on CME FedWatch jumped from roughly 35% to near 58% overnight."},
+    {"kicker": "Chips", "headline": "Nvidia's blowout quarter revives the AI trade", "blurb": "Nvidia posted fiscal Q2 revenue of $96.2B, up 106% year over year, and shares jumped about 9% the next session, adding roughly $440B in market cap in a single day. It ended a four-quarter streak of post-earnings declines and undercut the 'AI capex is slowing' narrative."},
+    {"kicker": "Macro flows", "headline": "The 'debasement trade' is back", "blurb": "Treasury Secretary Bessent's move to expand long-bond buybacks failed to durably tame yields; instead gold and bitcoin both surged, with bitcoin up more than 20% since Aug 19, as investors hedge against a roughly $40 trillion national debt and persistent deficits."},
+    {"kicker": "Currency", "headline": "The dollar slides to three-month lows", "blurb": "The dollar index logged its third down week in four, pressured by the debasement narrative and uncertainty over the Fed's next move. Watch for the read-through into multinational earnings translation and imported-inflation risk."},
+    {"kicker": "IPOs", "headline": "Anthropic sprints toward a 2026 listing, ahead of OpenAI", "blurb": "Anthropic is reportedly meeting investors and could file as soon as month-end, targeting a raise that could exceed SpaceX's $75B round, while OpenAI has reportedly pushed its own listing to mid-2027. A signal event for how public markets will value AI-company monetization."}
+  ],
+  "macro": {
+    "rate": {"k": "Fed funds target", "v": "3.50 - 3.75%", "s": "Held 9-3 at the July 28-29 FOMC; 3 dissents wanted a hike"},
+    "stance": {"k": "Policy tilt", "v": "Hawkish", "s": "Warsh's Jackson Hole debut flagged inflation as too high, conditions as frothy"},
+    "nextEvent": {"k": "Next FOMC", "v": "Sep 15-16", "s": "Decision Wed Sept 16, 2pm ET, with SEP + dot plot"},
+    "week": [
+      {"day": "Mon Aug 31", "event": "Month-end positioning", "note": "Quiet start into a holiday-shortened stretch; last trading day before the September calendar turns over."},
+      {"day": "Tue Sep 1", "event": "ISM Manufacturing PMI (Aug)", "note": "First factory-activity read of the month; watch new orders and the prices-paid component for inflation signal."},
+      {"day": "Wed Sep 2", "event": "ADP Employment + JOLTS (Jul); C3.ai earnings", "note": "Private-payrolls preview two days before the government report, plus a job-openings gauge of labor-market tightness. C3.ai reports fiscal Q1 2027 after the close."},
+      {"day": "Thu Sep 3", "event": "ISM Services PMI + jobless claims", "note": "The larger services side of the economy, plus weekly initial claims for a real-time labor read."},
+      {"day": "Fri Sep 4", "event": "Nonfarm Payrolls (Aug)", "note": "8:30am ET. Follows July's shock -23,000 print. The single biggest swing factor for the Sept 16 rate decision."}
+    ],
+    "watching": "Friday's payrolls report is the week's biggest swing factor: July's surprise job loss plus Warsh's hawkish Jackson Hole turn have already pushed September hike odds to roughly 58%. A strong August number could lock that in; a weak one reopens the cut debate right before the Fed's pre-meeting blackout. (Labor Day is the following Monday, Sept 7 - markets closed, no edition that day.)"
+  },
+  "tech": [
+    {"kicker": "Silicon", "headline": "Nvidia's Q2: $96.2B revenue, up 106% year over year", "blurb": "The clearest read yet that hyperscaler AI-accelerator demand isn't slowing. Shares added roughly $440B in market cap in one session, the biggest one-day pop after four straight quarters of post-earnings declines."},
+    {"kicker": "Supply chain", "headline": "Memory, not logic, is the AI bottleneck now", "blurb": "DRAM and HBM capacity is reportedly sold out into 2027 as AI infrastructure spending accelerates, and Nvidia has told top customers to expect 15%-plus price hikes on Vera Rubin and Grace Blackwell servers in early 2027 as a result. It's widening a split between AI-compute winners and traditional consumer-chip makers still facing soft smartphone demand."},
+    {"kicker": "Infrastructure", "headline": "How the AI buildout actually gets financed is now the question", "blurb": "Nvidia is reportedly exploring new long-duration financing structures to help customers fund AI buildouts, alongside a deepened SpaceX partnership. Commentators are increasingly focused on capex funding mechanics, not just demand."},
+    {"kicker": "IPOs", "headline": "Anthropic vs. OpenAI: the race to go public first", "blurb": "Anthropic is reportedly targeting a filing as soon as this month with a raise that could top SpaceX's $75B, while OpenAI has pushed toward mid-2027. Directly relevant to how the market will eventually price AI-native software businesses."}
+  ],
+  "radar": {
+    "asOf": "Market caps per stockanalysis.com and Yahoo Finance for the week of Aug 24-28, 2026; sources disagreed by 5-30% on several names (APPS, ZD, BL, YELP especially). Treat as directional and re-verify on stockanalysis.com before a session.",
+    "rows": [
+      {"ticker": "PDFS", "co": "PDF Solutions", "mcap": "~$2.0B", "thesis": "Yield-analysis software for semiconductor fabs, leveraged to the same capacity buildout driving the chip names.", "flag": "Analyst upgrade", "hot": true},
+      {"ticker": "ZD", "co": "Ziff Davis", "mcap": "~$1.95B", "thesis": "Digital media and tech-publishing holdco; cash-generative, acquisitive, ad-cycle sensitive.", "flag": "PT hikes", "hot": true},
+      {"ticker": "ATEN", "co": "A10 Networks", "mcap": "~$1.9B", "thesis": "Networking security and application delivery, a small pure-play on data-center and carrier upgrade spend; recently acquired TrojAI to add AI-model security and governance tooling.", "flag": "M&A: bought TrojAI", "hot": true},
+      {"ticker": "PRGS", "co": "Progress Software", "mcap": "~$1.8B", "thesis": "Enterprise infrastructure software and dev tools; roll-up model, steady free cash flow, watch the debt load.", "flag": "New CIO", "hot": false},
+      {"ticker": "BL", "co": "BlackLine", "mcap": "~$1.9B", "thesis": "Cloud accounting / financial-close automation; named in the 'AI-accretive SaaS' rally read.", "flag": "Quiet, reports Nov 5", "hot": false},
+      {"ticker": "APPS", "co": "Digital Turbine", "mcap": "~$1.1B", "thesis": "Mobile app delivery and monetization; high-beta, ad-spend and handset-cycle exposed.", "flag": "Earnings pop", "hot": true},
+      {"ticker": "YELP", "co": "Yelp", "mcap": "~$1.3B", "thesis": "Local reviews and advertising; buybacks paused, small-business ad demand is the tell.", "flag": "Post-earnings", "hot": false},
+      {"ticker": "GTM", "co": "ZoomInfo", "mcap": "~$1.14B", "thesis": "B2B sales-intelligence data platform; net-retention and seat trends are the whole story here.", "flag": "Under pressure", "hot": false},
+      {"ticker": "AI", "co": "C3.ai", "mcap": "~$1.6B", "thesis": "Enterprise AI software platform; not yet profitable, use EV/Revenue, not P/E.", "flag": "Restructuring; reports Wed Sep 2", "hot": true},
+      {"ticker": "MQ", "co": "Marqeta", "mcap": "~$1.7B", "thesis": "Card-issuing / payments infrastructure API. Headquartered in Oakland, the club's local-angle first pick. Named a new Chief Product Officer (Eugenia Gibbons) Aug 25, following an earlier finance-leadership change.", "flag": "Local pick; new CPO", "hot": true}
+    ]
+  },
+  "filings": {
+    "asOf": "New SEC EDGAR filings from the 10 watchlist companies, past ~7 days. Routine Form 3/4/5 insider filings are skipped. Read the full documents at sec.gov/cgi-bin/browse-edgar.",
+    "rows": [
+      {"ticker": "MQ", "form": "8-K", "what": "Item 5.02 - appointment of Eugenia Gibbons as Chief Product Officer, effective late August.", "date": "Aug 25"},
+      {"ticker": "ATEN", "form": "8-K", "what": "Disclosed the acquisition of TrojAI, adding AI-model security and governance to the product line.", "date": "late Aug"},
+      {"ticker": "AI", "form": "8-K / press release", "what": "Notice that fiscal Q1 2027 results will be released Wed Sep 2 after the close - the 10-Q follows.", "date": "Aug 27"}
+    ]
+  },
+  "questions": [
+    {"q": "Fed Chair Warsh's Jackson Hole speech pushed September hike odds from about 35% to near 58% without any rate action that day. Through what channel does a speech move markets like that?", "a": "It's forward guidance: markets reprice the expected future path of rates immediately, so Treasury yields rise, the dollar tends to firm, and long-duration or unprofitable growth stocks de-rate because their future cash flows get discounted harder, all before any policy actually changes."},
+    {"q": "Nvidia added roughly $440B in market cap in a single session after posting 106% revenue growth. What does that size of reaction tell you about how the market had priced AI-capex risk beforehand?", "a": "A move that large means real downside risk had been priced in, likely fears that hyperscaler AI spending was decelerating. The report didn't just beat estimates, it flipped the market's underlying assumption, which is why the reaction was so outsized relative to the beat itself."},
+    {"q": "Gold and bitcoin have both surged as part of what's being called a 'debasement trade.' What is that trade actually betting on?", "a": "It's a bet that policymakers will effectively inflate away debt burdens rather than default or aggressively tighten. Investors rotate into scarce, hard assets like gold and bitcoin as a hedge against currency purchasing-power erosion tied to persistent deficits and debt monetization."},
+    {"q": "July payrolls showed a surprise loss of 23,000 jobs, yet Fed Chair Warsh turned more hawkish weeks later. How do you reconcile weak jobs data with a hawkish Fed tilt?", "a": "The Fed has a dual mandate of employment and price stability. Warsh's message was that inflation is still running too high and financial conditions are too loose, so even with a soft jobs print he's prioritizing the inflation side, a reminder that one weak data point doesn't guarantee a dovish pivot."},
+    {"q": "The 10-year Treasury yield sits near 4.73% while the VIX sits near a 2026 low around 14. What does that combination suggest?", "a": "Equity volatility is being priced calmly even though bond yields are signaling real rate and inflation risk. That split often means equity investors are underpricing rate risk, which can set up a volatility catch-up if bond-market stress eventually forces its way into stocks."}
+  ],
+  "interview": [
+    {"company": "Goldman Sachs", "question": "Walk me through the biggest story in markets this week and what you're watching next.", "tip": "Lead with Warsh's hawkish Jackson Hole pivot, add Nvidia's blowout quarter as the counterweight, then name Friday's payrolls as the next catalyst - structure over trivia."},
+    {"company": "JPMorgan", "question": "If the Fed hikes 25bp in September, which parts of the equity market get hit hardest and why?", "tip": "Talk duration: long-dated, unprofitable growth and rate-sensitive sectors like small-cap and real estate get hurt most; contrast with banks and value names that can benefit from higher rates."},
+    {"company": "Citadel", "question": "Bitcoin is up more than 20% in about ten days on what's being called a debasement trade. How do you tell a genuine macro hedge flow from a speculative squeeze?", "tip": "Talk positioning data, funding rates, and short interest to separate a forced squeeze from durable macro-driven demand, and note that the two can layer on top of each other."},
+    {"company": "Blackstone", "question": "Nvidia added roughly $440B in market cap in one day. How do you think about single-name concentration risk in a portfolio benchmarked to the S&P 500?", "tip": "Talk about index weight versus active weight, correlation to the rest of the portfolio, and running a scenario where that one name reverses."},
+    {"company": "Jane Street", "question": "Friday's payrolls report could break either way after July's shock loss. Walk me through how you'd think about trading it going in blind.", "tip": "They want process, not a prediction: pre-position sizing for either outcome, what price action would confirm versus invalidate each scenario, and how fast you'd need to react."}
+  ],
+  "term": {
+    "term": "VIX / volatility",
+    "def": "The CBOE Volatility Index measures the market's expected 30-day volatility implied by S&P 500 options prices, often called the market's 'fear gauge.' A low VIX, like the near-2026-low readings around 14 this week, signals calm or complacency; sharp spikes typically accompany steep equity selloffs. It measures expected turbulence, not market direction.",
+    "seeAlso": "see also: yield curve - forward guidance - CPI"
+  },
+  "discussion": [
+    {"headline": "A hawkish Warsh versus a blowout Nvidia quarter - which story wins into the September FOMC?", "angle": "Frame the tension: higher-for-longer rate risk compresses multiples, but Nvidia's beat says the AI spending cycle isn't slowing. Does PDFS, leveraged to the same chip cycle, sit right at that intersection?"},
+    {"headline": "Gold and bitcoin are surging together in a 'debasement trade.' Is that a warning sign for equities?", "angle": "Discuss what a debasement rally implies about confidence in fiscal policy, and whether it's a hedge worth understanding alongside the club's equity-only watchlist."},
+    {"headline": "Anthropic is racing OpenAI to IPO first. What would you want to know before either one lists?", "angle": "Talk through how you'd value a pre-profit AI platform business - growth versus burn, path to profitability - and use C3.ai on the watchlist as a cautionary comp for unprofitable AI software."}
+  ],
+  "sourceFoot": "Compiled from the club reading list (incl. WSO's The Daily Peel) via live web search. Figures are as reported by those outlets for the week of Aug 24-28, 2026 and are a starting point for discussion, not investment advice.",
+  "generatedAt": "2026-08-30T20:45:00Z"
+}
+</script>
+
+<script>
+(function(){
+  "use strict";
+  var raw = document.getElementById("bulletin-data").textContent;
+  var D;
+  try { D = JSON.parse(raw); } catch(e){ D = null; }
+
+  function esc(s){ var d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
+  function set(id, txt){ var el = document.getElementById(id); if(el) el.textContent = txt; }
+  function el(id){ return document.getElementById(id); }
+  function hideSection(id){ var s = document.getElementById(id); if(s) s.style.display = "none"; }
+
+  if(!D){
+    document.querySelectorAll("main section").forEach(function(s){
+      if(s.id !== "brief" && s.id !== "sources") s.style.display = "none";
+    });
+    el("pulse-feed") && (el("pulse-feed").innerHTML = '<p class="empty">Today’s edition failed to load. Check back shortly.</p>');
+    return;
+  }
+
+  /* masthead */
+  set("dl-date", D.prettyDate || D.date || "");
+  set("dl-edition", D.edition || "Daily edition");
+  set("dl-compiled", D.compiled ? ("compiled " + D.compiled) : "");
+  if(D.refresh) set("m-refresh", D.refresh);
+
+  /* ticker */
+  if(Array.isArray(D.ticker) && D.ticker.length){
+    var cells = D.ticker.map(function(t){
+      var dir = (t.dir === "up" || t.dir === "down") ? t.dir : "flat";
+      return '<span class="cell"><span class="lbl">' + esc(t.label) + '</span>' +
+             '<span class="val">' + esc(t.value) + '</span>' +
+             (t.change ? ' <span class="chg ' + dir + '">' + esc(t.change) + '</span>' : '') +
+             '</span>';
+    }).join("");
+    el("ticker").innerHTML = cells + cells;
+  } else {
+    el("ticker").textContent = "snapshot unavailable";
+  }
+
+  /* pulse */
+  function feed(target, items){
+    var host = el(target);
+    if(!host) return;
+    if(!Array.isArray(items) || !items.length){ host.innerHTML = '<p class="empty">Nothing logged for today.</p>'; return; }
+    host.innerHTML = items.map(function(it){
+      return '<div class="item"><div class="tag">' + esc(it.kicker || "") + '</div>' +
+             '<div><h3>' + esc(it.headline) + '</h3><p>' + esc(it.blurb) + '</p></div></div>';
+    }).join("");
+  }
+  feed("pulse-feed", D.pulse);
+  feed("tech-feed", D.tech);
+
+  /* macro */
+  var m = D.macro || {};
+  var boxes = [m.rate, m.stance, m.nextEvent].filter(Boolean);
+  if(boxes.length){
+    el("macro-top").innerHTML = boxes.map(function(b){
+      return '<div class="box"><div class="k">' + esc(b.k) + '</div>' +
+             '<div class="v">' + esc(b.v) + '</div>' +
+             '<div class="s">' + esc(b.s) + '</div></div>';
+    }).join("");
+  }
+  if(Array.isArray(m.week) && m.week.length){
+    el("cal-body").innerHTML = m.week.map(function(r){
+      return '<tr><td>' + esc(r.day) + '</td><td class="ev">' + esc(r.event) + '</td><td class="nt">' + esc(r.note) + '</td></tr>';
+    }).join("");
+  } else {
+    hideSection("macro") ;
+  }
+  if(m.watching){
+    el("macro-watching").innerHTML = '<b>What decides the week</b>' + esc(m.watching);
+  } else {
+    el("macro-watching").style.display = "none";
+  }
+
+  /* radar */
+  var r = D.radar || {};
+  set("radar-note", r.asOf || "");
+  if(Array.isArray(r.rows) && r.rows.length){
+    el("radar-body").innerHTML = r.rows.map(function(row){
+      var cls = row.hot ? "flag hot" : (/quiet/i.test(row.flag || "") ? "flag quiet" : "flag");
+      return '<tr><td><span class="tk">' + esc(row.ticker) + '</span>' +
+             '<span class="co">' + esc(row.co) + '</span></td>' +
+             '<td class="mc">' + esc(row.mcap) + '</td>' +
+             '<td class="th">' + esc(row.thesis) + '</td>' +
+             '<td><span class="' + cls + '">' + esc(row.flag || "—") + '</span></td></tr>';
+    }).join("");
+  } else {
+    hideSection("radar");
+  }
+
+  /* filings watch */
+  var fw = D.filings || {};
+  set("filings-note", fw.asOf || "");
+  if(Array.isArray(fw.rows) && fw.rows.length){
+    el("filings-list").innerHTML = fw.rows.map(function(f){
+      return '<div class="filing"><div class="fk"><b>' + esc(f.ticker) + '</b>' +
+             '<span>' + esc(f.form || "filing") + '</span></div>' +
+             '<div class="fw">' + esc(f.what || "") + '</div>' +
+             '<div class="fd">' + esc(f.date || "") + '</div></div>';
+    }).join("");
+  } else {
+    el("filings-list").innerHTML = '<p class="empty">No new watchlist filings on EDGAR in the past week.</p>';
+  }
+
+  /* trading floor */
+  if(Array.isArray(D.questions) && D.questions.length){
+    el("floor-list").innerHTML = D.questions.map(function(q, i){
+      return '<details class="qa"><summary>' +
+             '<span class="qn">Q' + (i+1) + '</span>' +
+             '<span class="qt">' + esc(q.q) + '</span>' +
+             '<span class="pm" aria-hidden="true">+</span></summary>' +
+             '<div class="ans">' + esc(q.a) + '</div></details>';
+    }).join("");
+  } else { hideSection("floor"); }
+
+  /* the desk */
+  if(Array.isArray(D.interview) && D.interview.length){
+    el("desk-list").innerHTML = D.interview.map(function(it){
+      return '<div class="item"><div class="co">' + esc(it.company) + '</div>' +
+             '<h3>' + esc(it.question) + '</h3>' +
+             '<div class="tip">' + esc(it.tip) + '</div></div>';
+    }).join("");
+  } else { hideSection("desk"); }
+
+  /* term */
+  if(D.term && D.term.term){
+    el("term-card").innerHTML = '<div class="t">' + esc(D.term.term) + '</div>' +
+      '<p class="d">' + esc(D.term.def) + '</p>' +
+      (D.term.seeAlso ? '<div class="also">' + esc(D.term.seeAlso) + '</div>' : '');
+  } else { hideSection("term"); }
+
+  /* discussion */
+  if(Array.isArray(D.discussion) && D.discussion.length){
+    el("prep-list").innerHTML = D.discussion.map(function(it){
+      return '<div class="item"><div><h3>' + esc(it.headline) + '</h3>' +
+             '<p>' + esc(it.angle) + '</p></div></div>';
+    }).join("");
+  } else { hideSection("discussion"); }
+
+  /* sources + footer */
+  set("src-foot", D.sourceFoot || "");
+  if(D.marketsClosed){
+    set("ft-note", "Markets closed today — next edition on the following trading day, pre-market.");
+  }
+  if(D.generatedAt){
+    var g = new Date(D.generatedAt);
+    if(!isNaN(g)){
+      set("ft-gen", "Generated " + g.toISOString().replace("T"," ").slice(0,16) + " UTC");
+    }
+  }
+
+  /* staggered reveal */
+  var secs = document.querySelectorAll(".reveal");
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  secs.forEach(function(s, i){
+    if(reduce){ s.style.opacity = 1; s.style.transform = "none"; return; }
+    s.style.animationDelay = Math.min(i * 70, 500) + "ms";
+  });
+})();
+</script>
+</body>
+</html>

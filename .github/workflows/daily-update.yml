@@ -1,0 +1,46 @@
+name: Daily Soreno update
+
+on:
+  schedule:
+    # 12:00 UTC, weekdays. Same cadence as the Claude Artifact routine
+    # (= 5am Pacific during daylight time, 4am in winter; before the US open).
+    - cron: "0 12 * * 1-5"
+  workflow_dispatch: {} # lets you run it by hand from the Actions tab
+
+# Needed so the job can commit the regenerated index.html back to the repo.
+permissions:
+  contents: write
+
+# Never run two updates at once.
+concurrency:
+  group: daily-update
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Generate today's bulletin
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: node scripts/generate.mjs
+
+      - name: Commit if changed
+        run: |
+          git config user.name "soreno-bot"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --quiet --staged; then
+            echo "No change today."
+          else
+            git commit -m "Daily update: $(date -u +%Y-%m-%d) [skip ci]"
+            git push
+          fi
