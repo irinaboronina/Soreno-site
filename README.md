@@ -57,7 +57,7 @@ node -e 'const fs=require("fs");let b=fs.readFileSync("site/bulletin.html","utf8
   `node scripts/generate.mjs`, and commits `index.html` back to `main` if it
   changed. Pages ("Deploy from a branch", `main` / `/root`) redeploys on that
   push automatically.
-- `scripts/generate.mjs` — calls **Google's Gemini** (`gemini-2.5-flash`, with
+- `scripts/generate.mjs` — calls **Google's Gemini** (`gemini-3.6-flash`, with
   Google Search grounding) once, using the same source list and JSON schema as
   the Artifact routine, and rewrites the `bulletin-data` block inside
   `index.html`. Needs env var `GEMINI_API_KEY` (a repo secret). Gemini's free

@@ -23,7 +23,7 @@ async function note(line) {
 
 const API_KEY = process.env.GEMINI_API_KEY;
 
-const MODEL = "gemini-2.5-flash"; // free-tier; fall back to "gemini-2.0-flash" if unavailable
+const MODEL = "gemini-3.6-flash"; // free-tier flash model; see aistudio.google.com/ for current names
 const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 const INDEX_FILE = new URL("../index.html", import.meta.url);
 const DATA_RE =
@@ -108,8 +108,7 @@ async function callGemini() {
     tools: [{ google_search: {} }],
     generationConfig: {
       temperature: 0.6,
-      maxOutputTokens: 24000,
-      thinkingConfig: { thinkingBudget: 0 }, // no thinking budget -> all output goes to the JSON
+      maxOutputTokens: 32000, // headroom for the model's own reasoning + the JSON
     },
   });
 
