@@ -12,8 +12,18 @@ import { readFile, writeFile } from "node:fs/promises";
 const API_KEY = process.env.GEMINI_API_KEY;
 if (!API_KEY) {
   console.error("Missing GEMINI_API_KEY environment variable.");
+  console.error(
+    "Secret-like env vars seen:",
+    Object.keys(process.env)
+      .filter((k) => /GEMINI|GOOGLE|API_KEY|GOOG/i.test(k))
+      .join(", ") || "(none)"
+  );
   process.exit(1);
 }
+console.log(
+  `Key present: yes, length ${API_KEY.length}, starts "${API_KEY.slice(0, 3)}", ` +
+    `trimmed length ${API_KEY.trim().length}`
+);
 
 const MODEL = "gemini-2.5-flash"; // free-tier; fall back to "gemini-2.0-flash" if unavailable
 const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
@@ -92,39 +102,45 @@ Content rules:
 Do not fabricate numbers or filings. If you cannot verify something, describe it qualitatively or leave it out. Keep every string concise - this is read on a phone. Output valid JSON only.`;
 
 // --- Gemini call (REST; Google Search grounding) --------------------------
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 async function callGemini() {
-  const res = await fetch(ENDPOINT, {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-goog-api-key": API_KEY,
+  const body = JSON.stringify({
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    tools: [{ google_search: {} }],
+    generationConfig: {
+      temperature: 0.6,
+      maxOutputTokens: 24000,
+      thinkingConfig: { thinkingBudget: 0 }, // no thinking budget -> all output goes to the JSON
     },
-    body: JSON.stringify({
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      tools: [{ google_search: {} }],
-      generationConfig: {
-        temperature: 0.6,
-        maxOutputTokens: 8192,
-        responseMimeType: "text/plain",
-      },
-    }),
   });
 
-  if (!res.ok) {
-    const body = await res.text().catch(() => "");
-    throw new Error(`Gemini API ${res.status}: ${body.slice(0, 600)}`);
+  let lastErr;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const res = await fetch(ENDPOINT, {
+      method: "POST",
+      headers: { "content-type": "application/json", "x-goog-api-key": API_KEY.trim() },
+      body,
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      const cand = data.candidates?.[0];
+      if (!cand)
+        throw new Error("No candidate in response: " + JSON.stringify(data).slice(0, 500));
+      if (cand.finishReason && !["STOP", "MAX_TOKENS"].includes(cand.finishReason))
+        throw new Error(`Model stopped early: ${cand.finishReason}`);
+      return (cand.content?.parts || []).map((p) => p.text || "").join("").trim();
+    }
+
+    const errText = (await res.text().catch(() => "")).slice(0, 1200);
+    lastErr = new Error(`Gemini API ${res.status}: ${errText}`);
+    // Retry transient errors only; fail fast on 400/401/403/404.
+    if (![429, 500, 502, 503, 504].includes(res.status)) throw lastErr;
+    console.warn(`attempt ${attempt} got ${res.status}, retrying in ${attempt * 8}s...`);
+    await sleep(attempt * 8000);
   }
-
-  const data = await res.json();
-  const cand = data.candidates?.[0];
-  if (!cand) throw new Error("No candidate in Gemini response: " + JSON.stringify(data).slice(0, 400));
-  if (cand.finishReason && !["STOP", "MAX_TOKENS"].includes(cand.finishReason))
-    throw new Error(`Gemini stopped early: ${cand.finishReason}`);
-
-  return (cand.content?.parts || [])
-    .map((p) => p.text || "")
-    .join("")
-    .trim();
+  throw lastErr;
 }
 
 // --- validation --------------------------------------------------------------
