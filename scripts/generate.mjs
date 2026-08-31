@@ -7,23 +7,21 @@
 // Requires env var GEMINI_API_KEY - a free key from https://aistudio.google.com/apikey
 // (no credit card). Set it as a GitHub Actions repo secret; never commit it.
 
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile, appendFile } from "node:fs/promises";
+
+// Tee a line to the console AND to the GitHub Actions run summary page,
+// so failures are visible without digging into step logs.
+async function note(line) {
+  console.log(line);
+  const f = process.env.GITHUB_STEP_SUMMARY;
+  if (f) {
+    try {
+      await appendFile(f, line + "\n");
+    } catch {}
+  }
+}
 
 const API_KEY = process.env.GEMINI_API_KEY;
-if (!API_KEY) {
-  console.error("Missing GEMINI_API_KEY environment variable.");
-  console.error(
-    "Secret-like env vars seen:",
-    Object.keys(process.env)
-      .filter((k) => /GEMINI|GOOGLE|API_KEY|GOOG/i.test(k))
-      .join(", ") || "(none)"
-  );
-  process.exit(1);
-}
-console.log(
-  `Key present: yes, length ${API_KEY.length}, starts "${API_KEY.slice(0, 3)}", ` +
-    `trimmed length ${API_KEY.trim().length}`
-);
 
 const MODEL = "gemini-2.5-flash"; // free-tier; fall back to "gemini-2.0-flash" if unavailable
 const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
@@ -168,7 +166,21 @@ function validate(d) {
 
 // --- main -----------------------------------------------------------------
 async function main() {
-  console.log(`Generating Soreno bulletin for ${prettyDateET} (Gemini: ${MODEL})...`);
+  await note(`### Soreno generate.mjs — ${prettyDateET}`);
+  if (!API_KEY) {
+    const seen = Object.keys(process.env)
+      .filter((k) => /GEMINI|GOOGLE|API_KEY|GOOG/i.test(k))
+      .join(", ");
+    throw new Error(
+      `GEMINI_API_KEY is not set. The repo secret named exactly "GEMINI_API_KEY" is missing or empty. ` +
+        `Related env vars seen: ${seen || "(none)"}`
+    );
+  }
+  await note(
+    `Key received: length ${API_KEY.length}, starts "${API_KEY.slice(0, 3)}", ` +
+      `no surrounding whitespace: ${API_KEY === API_KEY.trim()}. Model: ${MODEL}.`
+  );
+
   const html = await readFile(INDEX_FILE, "utf8");
   if (!DATA_RE.test(html)) throw new Error("bulletin-data script block not found in index.html");
 
@@ -190,14 +202,18 @@ async function main() {
   const block = JSON.stringify(parsed, null, 2);
   const updated = html.replace(DATA_RE, (_m, open, _old, close) => open + block + close);
   await writeFile(INDEX_FILE, updated);
-  console.log(
-    `Wrote index.html - ${parsed.edition || "edition"} for ${parsed.prettyDate}` +
+  await note(
+    `OK - wrote index.html: ${parsed.edition || "edition"} for ${parsed.prettyDate}` +
       (parsed.marketsClosed ? " (markets closed)" : "") +
       `, ${parsed.filings.rows.length} filing(s).`
   );
 }
 
-main().catch((err) => {
-  console.error("Generation failed:", err.message || err);
+main().catch(async (err) => {
+  await note("");
+  await note("**FAILED:**");
+  await note("```");
+  await note(String(err && err.message ? err.message : err).slice(0, 1500));
+  await note("```");
   process.exit(1);
 });
