@@ -14,10 +14,16 @@ their own schedules:
 | Claude Artifact | https://claude.ai/code/artifact/67ad9f26-996d-477f-be57-3203df2c7a01 | a Claude Code routine (Anthropic cloud) |
 | GitHub Pages | https://irinaboronina.github.io/Soreno-site/ | GitHub Actions in this repo |
 
-They are mirrors, not the same instance — each calls the Anthropic API
-separately on its own weekday cron (`0 12 * * 1-5` UTC), so the numbers can
-differ by a few minutes' worth of news. That's fine; pick whichever link is
-more convenient to share.
+They are mirrors, not the same instance — the Artifact copy is written by
+Claude (Sonnet) on the Claude subscription, the Pages copy by Gemini Flash on
+its free tier, each on its own weekday cron (`0 12 * * 1-5` UTC). Same
+structure and sources; wording and the exact numbers can differ by a few
+minutes' worth of news. Pick whichever link is more convenient to share.
+
+The **GitHub Pages copy** is the free, public, hands-off one — a plain
+`irinaboronina.github.io` URL, no logins, nothing to re-share. The **Artifact
+copy** needs a Claude account per viewer for auto-updates, or a manual
+version re-pin if shared by public link.
 
 ---
 
@@ -51,17 +57,19 @@ node -e 'const fs=require("fs");let b=fs.readFileSync("site/bulletin.html","utf8
   `node scripts/generate.mjs`, and commits `index.html` back to `main` if it
   changed. Pages ("Deploy from a branch", `main` / `/root`) redeploys on that
   push automatically.
-- `scripts/generate.mjs` — calls the Anthropic API (`claude-sonnet-5`, with
-  server-side web search) once, using the same source list and JSON schema as
+- `scripts/generate.mjs` — calls **Google's Gemini** (`gemini-2.5-flash`, with
+  Google Search grounding) once, using the same source list and JSON schema as
   the Artifact routine, and rewrites the `bulletin-data` block inside
-  `index.html`. Needs env var `ANTHROPIC_API_KEY` (a repo secret).
+  `index.html`. Needs env var `GEMINI_API_KEY` (a repo secret). Gemini's free
+  tier covers a once-a-day job with room to spare, so this costs nothing.
 - `.nojekyll` — disables Jekyll so Pages serves the static files as-is.
 
 ### One-time setup (GitHub UI)
 
-1. **Add the API key secret** — repo → Settings → Secrets and variables →
-   Actions → New repository secret → name `ANTHROPIC_API_KEY`, paste your key
-   from https://console.anthropic.com. Enter it in that field yourself; don't
+1. **Add the API key secret** — get a free key at
+   https://aistudio.google.com/apikey (no credit card). Then repo → Settings →
+   Secrets and variables → Actions → New repository secret → name
+   `GEMINI_API_KEY`, paste the key. Enter it in that field yourself; don't
    paste it into any chat.
 2. **Enable Pages** — repo → Settings → Pages → Build and deployment → Source
    = "Deploy from a branch", Branch = `main`, Folder = `/ (root)` → Save.
@@ -72,8 +80,9 @@ node -e 'const fs=require("fs");let b=fs.readFileSync("site/bulletin.html","utf8
 
 ### Cost
 
-Only the daily generation step costs anything — a few cents/day of Anthropic
-API usage per copy. GitHub Actions + Pages at this frequency are free.
+Free. The GitHub Pages copy runs on Gemini's free tier; GitHub Actions + Pages
+at this frequency are free. (The Claude Artifact copy runs on the Claude
+subscription instead.)
 
 ### Changing the schedule
 

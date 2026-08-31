@@ -1,24 +1,27 @@
 // Regenerates the Soreno bulletin's data block inside index.html.
 //
-// Mirrors the Claude Code routine that keeps the Artifact version updated:
-// same source list, same JSON schema. Run daily by the GitHub Actions workflow.
+// Mirrors the Claude Artifact routine (same source list, same JSON schema) but
+// runs on Google's Gemini free tier so the GitHub Pages copy costs nothing.
+// Run daily by the GitHub Actions workflow.
 //
-// Requires env var ANTHROPIC_API_KEY (a GitHub Actions repo secret; never committed).
+// Requires env var GEMINI_API_KEY - a free key from https://aistudio.google.com/apikey
+// (no credit card). Set it as a GitHub Actions repo secret; never commit it.
 
 import { readFile, writeFile } from "node:fs/promises";
 
-const API_KEY = process.env.ANTHROPIC_API_KEY;
+const API_KEY = process.env.GEMINI_API_KEY;
 if (!API_KEY) {
-  console.error("Missing ANTHROPIC_API_KEY environment variable.");
+  console.error("Missing GEMINI_API_KEY environment variable.");
   process.exit(1);
 }
 
-const MODEL = "claude-sonnet-5"; // matches the Artifact routine; bump to claude-opus-5 for more depth
+const MODEL = "gemini-2.5-flash"; // free-tier; fall back to "gemini-2.0-flash" if unavailable
+const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 const INDEX_FILE = new URL("../index.html", import.meta.url);
 const DATA_RE =
   /(<script id="bulletin-data" type="application\/json">\n)([\s\S]*?)(\n<\/script>)/;
 
-// --- date context (America/New_York) -----------------------------------------
+// --- date context (America/New_York) ---------------------------------------
 const nyParts = new Intl.DateTimeFormat("en-US", {
   timeZone: "America/New_York",
   weekday: "long",
@@ -26,21 +29,21 @@ const nyParts = new Intl.DateTimeFormat("en-US", {
   month: "long",
   day: "numeric",
 }).formatToParts(new Date());
-const get = (t) => nyParts.find((p) => p.type === t)?.value ?? "";
-const weekdayET = get("weekday");
-const prettyDateET = `${weekdayET}, ${get("month")} ${get("day")}, ${get("year")}`;
+const part = (t) => nyParts.find((p) => p.type === t)?.value ?? "";
+const weekdayET = part("weekday");
+const prettyDateET = `${weekdayET}, ${part("month")} ${part("day")}, ${part("year")}`;
 const isoDateET = new Intl.DateTimeFormat("en-CA", {
   timeZone: "America/New_York",
 }).format(new Date()); // YYYY-MM-DD
 
-// --- prompt -----------------------------------------------------------------
-const systemPrompt = `You are the automated editor of "Soreno," a daily pre-market finance bulletin for the NU Oakland Investing Club (Northeastern University, Oakland). Today in US Eastern time is ${prettyDateET} (${isoDateET}). Research the day's real market conditions with the web_search tool before writing anything time-sensitive - never rely on memory for prices, dates, or headlines.
+// --- prompt ---------------------------------------------------------------
+const prompt = `You are the automated editor of "Soreno," a daily pre-market finance bulletin for the NU Oakland Investing Club (Northeastern University, Oakland). Today in US Eastern time is ${prettyDateET} (${isoDateET}). Use Google Search to research the day's real market conditions before writing anything time-sensitive - never rely on memory for prices, dates, or headlines.
 
 US equity markets are closed on weekends and NYSE holidays (New Year's Day, MLK Day, Presidents' Day, Good Friday, Memorial Day, Juneteenth, Independence Day, Labor Day = first Monday of September, Thanksgiving = fourth Thursday of November, Christmas; early close the day after Thanksgiving and on Christmas Eve). If markets are closed today, still produce an edition but set "marketsClosed": true, label "edition" accordingly (e.g. "Weekend edition" or "Holiday edition - markets closed"), and soften the "overnight" framing.
 
 Prioritise the club reading list: Morning Brew, Brew Markets, Financial Times, Axios Markets, Wall Street Oasis - The Daily Peel, then CFO Brew, Money Stuff (Matt Levine / Bloomberg), Stratechery and Sharp Tech, The Diff, TechCrunch; plus Yahoo Finance / CNBC / CNN Markets for quotes and levels, an economic-calendar page, and SEC EDGAR (sec.gov) for recent watchlist-company filings.
 
-Gather, then output ONE JSON object - no markdown fences, no preamble, no commentary. Exact shape (all strings plain text, no HTML, plain ASCII hyphens not fancy dashes):
+Output ONE JSON object and nothing else - no markdown code fences, no preamble, no commentary. Exact shape (all strings plain text, no HTML, plain ASCII hyphens not fancy dashes):
 
 {
   "date": "${isoDateET}",
@@ -79,8 +82,8 @@ Content rules:
 - Market Pulse: the 5 most important markets/macro developments in the last ~24h (overnight + pre-market), each a punchy headline plus a 1-2 sentence why-it-matters.
 - Macro Watch: current Fed funds target range and stance, the next FOMC meeting date, this week's US economic-data calendar (day / release / why it matters), and one "what decides the week" sentence.
 - Tech Desk: 3-4 tech-industry developments relevant to a tech-focused equity club (AI infrastructure, semis, enterprise software, major product or regulatory news).
-- Small-Cap Radar: for each of PDFS, ZD, ATEN, PRGS, BL, APPS, YELP, GTM, AI, MQ - a one-line "what they do & why we watch" plus a short status flag (fresh news / upcoming earnings, else "Quiet"). Keep the prior market cap if you cannot verify a new one.
-- Filings Watch: check SEC EDGAR for filings by those 10 tickers in the past ~7 days. Include 10-K, 20-F, 10-Q, 8-K, DEF 14A / proxy, S-1, 424B; skip routine Form 3/4/5 insider filings unless a very large or unusual insider trade. Newest first. If EDGAR is unreachable, fall back to web search for filing news and say so in the asOf note. An empty rows array is fine.
+- Small-Cap Radar: for each of PDFS, ZD, ATEN, PRGS, BL, APPS, YELP, GTM, AI, MQ - a one-line "what they do & why we watch" plus a short status flag (fresh news / upcoming earnings, else "Quiet"). Keep a reasonable prior market cap if you cannot verify a new one.
+- Filings Watch: search SEC EDGAR for filings by those 10 tickers in the past ~7 days. Include 10-K, 20-F, 10-Q, 8-K, DEF 14A / proxy, S-1, 424B; skip routine Form 3/4/5 insider filings unless a very large or unusual insider trade. Newest first. If EDGAR data is unavailable, use filing news coverage and say so in the asOf note. An empty rows array is fine.
 - Trading Floor: 5 market-analysis questions testing understanding of CURRENT conditions, each with a concise 2-3 sentence answer.
 - The Desk: 5 interview-prep items {company, question, tip} for real large finance or tech-finance employers (Goldman Sachs, JPMorgan, Citadel, Blackstone, Jane Street, Morgan Stanley, Evercore, PJT, McKinsey, etc.).
 - Term of the Day: one glossary term with a plain-language definition. Rotate day to day. Pool: market cap, P/E, EPS, free cash flow, long/short, diversification, penny stock, liquidity, RBV, VRIO, moat, insider ownership, R&D intensity, TAM, dilution, EV/Revenue, Price/Sales, the Fed / fed funds rate, CPI, earnings season, guidance, jobs report, yield curve, VIX / volatility, forward guidance, 10-K, 10-Q, 8-K, 20-F, SEC / EDGAR.
@@ -88,57 +91,43 @@ Content rules:
 
 Do not fabricate numbers or filings. If you cannot verify something, describe it qualitatively or leave it out. Keep every string concise - this is read on a phone. Output valid JSON only.`;
 
-// --- Anthropic call (raw HTTP; server-side web search; handles pause_turn) ---
-async function callClaude() {
-  const messages = [
-    {
-      role: "user",
-      content:
-        "Research today's real market conditions with web search, then produce the JSON bulletin now.",
+// --- Gemini call (REST; Google Search grounding) --------------------------
+async function callGemini() {
+  const res = await fetch(ENDPOINT, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-goog-api-key": API_KEY,
     },
-  ];
-  const tools = [{ type: "web_search_20260209", name: "web_search", max_uses: 25 }];
-
-  for (let attempt = 0; attempt < 6; attempt++) {
-    const res = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        "x-api-key": API_KEY,
-        "anthropic-version": "2023-06-01",
+    body: JSON.stringify({
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      tools: [{ google_search: {} }],
+      generationConfig: {
+        temperature: 0.6,
+        maxOutputTokens: 8192,
+        responseMimeType: "text/plain",
       },
-      body: JSON.stringify({
-        model: MODEL,
-        max_tokens: 8000,
-        thinking: { type: "adaptive" },
-        system: systemPrompt,
-        messages,
-        tools,
-      }),
-    });
+    }),
+  });
 
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      throw new Error(`Anthropic API ${res.status}: ${body.slice(0, 600)}`);
-    }
-
-    const data = await res.json();
-    if (data.stop_reason === "pause_turn") {
-      messages.push({ role: "assistant", content: data.content });
-      continue; // resume the server-tool turn
-    }
-    if (data.stop_reason === "refusal") {
-      throw new Error("Model refused the request.");
-    }
-    return (data.content || [])
-      .filter((b) => b.type === "text")
-      .map((b) => b.text)
-      .join("\n");
+  if (!res.ok) {
+    const body = await res.text().catch(() => "");
+    throw new Error(`Gemini API ${res.status}: ${body.slice(0, 600)}`);
   }
-  throw new Error("Too many pause_turn iterations without a final answer.");
+
+  const data = await res.json();
+  const cand = data.candidates?.[0];
+  if (!cand) throw new Error("No candidate in Gemini response: " + JSON.stringify(data).slice(0, 400));
+  if (cand.finishReason && !["STOP", "MAX_TOKENS"].includes(cand.finishReason))
+    throw new Error(`Gemini stopped early: ${cand.finishReason}`);
+
+  return (cand.content?.parts || [])
+    .map((p) => p.text || "")
+    .join("")
+    .trim();
 }
 
-// --- validation -----------------------------------------------------------
+// --- validation --------------------------------------------------------------
 function validate(d) {
   const counts = {
     ticker: [6, 9],
@@ -161,13 +150,13 @@ function validate(d) {
   if (!d.term || !d.term.term) throw new Error('"term" missing');
 }
 
-// --- main --------------------------------------------------------------------
+// --- main -----------------------------------------------------------------
 async function main() {
-  console.log(`Generating Soreno bulletin for ${prettyDateET}...`);
+  console.log(`Generating Soreno bulletin for ${prettyDateET} (Gemini: ${MODEL})...`);
   const html = await readFile(INDEX_FILE, "utf8");
   if (!DATA_RE.test(html)) throw new Error("bulletin-data script block not found in index.html");
 
-  const raw = await callClaude();
+  const raw = await callGemini();
   const cleaned = raw.replace(/```json|```/g, "").trim();
   const start = cleaned.indexOf("{");
   const end = cleaned.lastIndexOf("}");
